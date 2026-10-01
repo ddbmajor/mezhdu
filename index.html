@@ -53,9 +53,11 @@ h1{font-family:var(--display);font-weight:800;font-size:1.6rem;letter-spacing:-.
 .modes button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 
 .board{display:grid;grid-template-columns:40px 1fr;gap:14px;align-items:stretch}
-.strip{position:relative;border-radius:8px;background:var(--paper);border:1px solid var(--line);overflow:hidden;min-height:360px}
+.strip{position:relative;border-radius:8px;background:var(--paper);border:1px solid var(--line);overflow:hidden;min-height:360px;min-height:clamp(320px,52svh,430px)}
 .strip .range{position:absolute;left:0;right:0;background:var(--accent-soft);box-shadow:inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent);transition:top .35s ease,height .35s ease}
-.strip .mark{position:absolute;left:0;right:0;text-align:center;font-family:var(--display);font-size:.58rem;font-weight:700;color:var(--muted);transform:translateY(-50%);line-height:1}
+.strip .mark{position:absolute;left:0;right:0;text-align:center;font-family:var(--display);font-size:.6rem;font-weight:700;color:var(--muted);transform:translateY(-50%);line-height:1}
+.strip.won .range{background:var(--hit);box-shadow:none;min-height:3px}
+.strip.won .mark.in{color:var(--hit)}
 .strip .mark.in{color:var(--ink)}
 
 .words{display:flex;flex-direction:column;justify-content:center;gap:18px}
@@ -120,8 +122,7 @@ dialog a{color:inherit}
 .pop .tile{animation:pop .3s ease}
 @keyframes pop{50%{transform:scale(1.07)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-@media (min-height:780px){.strip{min-height:430px}.strip .mark{font-size:.64rem}}
-@media (max-height:680px){.kb button{height:44px}.strip{min-height:320px}}
+@media (max-height:680px){.kb button{height:44px}}
 </style>
 </head>
 <body>
@@ -420,8 +421,16 @@ dialog a{color:inherit}
     return PAD + (k + (idx - l.start) / (l.end - l.start)) * slot;
   }
   function renderStrip() {
-    const t = rank(S.top);
-    const a = t === 0 ? PAD : stripPos(t - 1), b = stripPos(rank(S.bottom));
+    const won = S.status === "won";
+    $("strip").classList.toggle("won", won);
+    let a, b;
+    if (won) {                       // после победы шкала показывает место самого ответа
+      const x = rank(S.answer);
+      a = stripPos(x - 1); b = stripPos(x);
+    } else {
+      const t = rank(S.top);
+      a = t === 0 ? PAD : stripPos(t - 1); b = stripPos(rank(S.bottom));
+    }
     const r = $("range");
     r.style.top = a + "%";
     r.style.height = Math.max(b - a, 0.5) + "%";
