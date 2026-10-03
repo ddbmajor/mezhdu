@@ -119,6 +119,9 @@ dialog h3{font-size:.95rem;margin:16px 0 6px}
 dialog ul{margin:0 0 10px;padding-left:18px}
 dialog li{margin-bottom:4px}
 dialog a{color:inherit}
+.other{font-size:.85rem;color:var(--muted)}
+.other a{color:var(--ink);font-weight:600}
+.foot a{color:var(--muted);padding:4px;text-underline-offset:3px}
 .loading{padding:40px 0;text-align:center;color:var(--muted)}
 .shake{animation:shake .35s}
 @keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
@@ -173,10 +176,14 @@ dialog a{color:inherit}
       <button class="btn" id="shareBtn">Поделиться</button>
       <button class="btn secondary" id="againBtn">Сыграть ещё</button>
     </div>
+    <p class="other">Ещё игра: <a href="https://ddbmajor.github.io/zvenya/" id="otherGameResult">«Звенья» — слово за словом по одной букве</a></p>
   </section>
 
   <div class="kb" id="kb" aria-label="Клавиатура"></div>
-  <footer class="foot"><button type="button" id="aboutBtn">О сайте и данных</button></footer>
+  <footer class="foot">
+    <a href="https://ddbmajor.github.io/zvenya/" id="otherGameFoot">Ещё игра: «Звенья»</a>
+    <button type="button" id="aboutBtn">О сайте и данных</button>
+  </footer>
 </div>
 
 <dialog id="about">
