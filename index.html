@@ -102,6 +102,9 @@ h1{font-family:var(--display);font-weight:800;font-size:1.6rem;letter-spacing:-.
 .kb button{flex:1 1 0;min-width:0;height:52px;border:0;border-radius:6px;background:var(--paper);box-shadow:inset 0 -2px 0 var(--line);font-weight:600;font-size:1rem;text-transform:uppercase;cursor:pointer;padding:0}
 .kb button.wide{flex:1.6 1 0;font-size:.8rem;text-transform:none}
 .kb button:active{background:var(--line)}
+.kb button.enter{flex:2 1 0;font-size:.9rem;background:var(--ink);color:var(--bg);box-shadow:none;transition:background .15s,color .15s}
+.kb button.enter.ready{background:var(--accent);color:#1D1606}
+.kb button.enter:active{opacity:.85}
 
 dialog{border:1px solid var(--line);border-radius:14px;background:var(--paper);color:var(--ink);max-width:min(440px,calc(100vw - 32px));padding:20px 22px}
 dialog::backdrop{background:rgba(10,15,13,.5)}
@@ -348,13 +351,13 @@ dialog a{color:inherit}
   });
 
   function buildKeyboard() {
-    const rows = ["йцукенгшщзхъ", "фывапролджэ", "⏎ячсмитьбю⌫"];
+    const rows = ["йцукенгшщзхъ", "фывапролджэ⏎", "ячсмитьбю⌫"];
     const kb = $("kb");
     rows.forEach(r => {
       const div = document.createElement("div"); div.className = "r";
       [...r].forEach(ch => {
         const b = document.createElement("button"); b.type = "button";
-        if (ch === "⏎") { b.textContent = "Ввод"; b.className = "wide"; b.dataset.k = "enter"; }
+        if (ch === "⏎") { b.textContent = "Ввод"; b.className = "wide enter"; b.id = "enterKey"; b.dataset.k = "enter"; }
         else if (ch === "⌫") { b.textContent = "⌫"; b.className = "wide"; b.dataset.k = "back"; b.setAttribute("aria-label", "Стереть"); }
         else { b.textContent = ch; b.dataset.k = ch; }
         div.appendChild(b);
@@ -382,6 +385,7 @@ dialog a{color:inherit}
     row.classList.toggle("lost", S.status === "lost");
     const word = S.status === "won" || S.status === "lost" ? S.answer : typed;
     fillRow(row, word, 0, i => (i < word.length ? "filled" : (i === word.length && S.status === "play" ? "cursor" : "")));
+    const ek = $("enterKey"); if (ek) ek.classList.toggle("ready", S.status === "play" && typed.length === LEN);
     row.setAttribute("aria-label", S.status === "play" ? "Ваше слово: " + (typed || "пусто") : "Ответ: " + S.answer);
   }
   function render(changed) {
