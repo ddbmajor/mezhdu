@@ -78,6 +78,8 @@ h1{font-family:var(--display);font-weight:800;font-size:1.6rem;letter-spacing:-.
 .strip .mark.empty{opacity:.3}
 .strip .mark.fresh{animation:markin .45s ease}
 @keyframes markin{from{opacity:0;transform:translateY(-50%) scale(.6)}to{opacity:1;transform:translateY(-50%) scale(1)}}
+.strip.won.gaveup .range{background:var(--err)}
+.strip.gaveup .mark.in{color:var(--err)!important}
 .strip.won .range{background:var(--hit);box-shadow:none;min-height:3px}
 .strip.won .mark.in{color:var(--hit)}
 .strip .mark.in{color:var(--ink)}
@@ -119,7 +121,9 @@ h1{font-family:var(--display);font-weight:800;font-size:1.6rem;letter-spacing:-.
 .lens{display:flex;flex-shrink:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper)}
 .lens button{border:0;background:none;padding:0 12px;height:32px;cursor:pointer;font-weight:500;font-size:.85rem;color:var(--muted);white-space:nowrap}
 .lens button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
-.diffnote{font-size:.78rem;color:var(--muted);line-height:1.25}
+.diffbar{justify-content:space-between}
+.giveup{border:0;background:none;padding:6px 4px;cursor:pointer;color:var(--muted);font-size:.85rem;text-decoration:underline;text-underline-offset:3px}
+.giveup[hidden]{display:none}
 #diffHard[aria-pressed="true"]{background:var(--err);color:#fff}
 .stats{display:flex;gap:18px;justify-content:center;font-size:.8rem;color:var(--muted)}
 .stats b{display:block;font-family:var(--display);font-size:1.1rem;color:var(--ink)}
@@ -174,7 +178,7 @@ dialog a{color:inherit}
       <button id="diffNormal" aria-pressed="true">Обычная</button>
       <button id="diffHard" aria-pressed="false">Сложная</button>
     </div>
-    <span class="diffnote" id="diffNote">сложная: любое слово словаря, шкала без подсказок</span>
+    <button class="giveup" id="giveUpBtn" type="button">Сдаться</button>
   </div>
 
   <main id="main">
@@ -252,7 +256,7 @@ dialog a{color:inherit}
     <span>Буквы, которые совпадают у обеих границ с начала слова, подсвечиваются: они точно есть в ответе.</span>
   </div>
   <p>Процент у границы — это расстояние от неё до ответа: какая доля словаря между ними лежит. Чем меньше процент, тем ответ ближе к этой границе.</p>
-  <p>В тренировке есть сложный режим: там может быть загадано любое слово словаря, даже редкое, а шкала не подсказывает, на какие буквы слов нет.</p>
+  <p>В тренировке есть сложный режим: там может быть загадано любое слово словаря, даже редкое, а шкала не подсказывает, на какие буквы слов нет. Если тренировочное слово не даётся, можно сдаться и посмотреть ответ.</p>
   <p>Шкала слева показывает, где вы в словаре. Когда обе границы начинаются одинаково, шкала «приближается» к следующей букве: над ней появляется общее начало, а зона меняет цвет.</p>
   <p>На всё 14 попыток. Буква Ё считается как Е. Новое слово дня появляется в полночь.</p>
   <form method="dialog"><button class="btn">Понятно</button></form>
@@ -342,13 +346,33 @@ dialog a{color:inherit}
     }
     typed = ""; render();
   }
-  function startPractice() {
+  // Тренировка: у обычной и сложной своя текущая партия. Переключение режима или сложности
+  // возвращает к незаконченной партии, новое слово — только по кнопке «Ещё слово».
+  function practiceKey() { return "practice:" + (hard ? "hard" : "normal"); }
+  function startPractice(forceNew) {
     mode = "practice"; setModeButtons();
-    const pool = hard ? answersHard : answers;
-    S = freshState(pool[Math.floor(Math.random() * pool.length)], "p");
+    const saved = forceNew ? null : store.get(practiceKey(), null);
+    if (saved && allowedIdx.has(saved.answer)) {
+      S = freshState(saved.answer, "p");
+      saved.guesses.forEach(w => { if (S.status === "play") apply(S, w); });
+      if (saved.gaveUp && S.status === "play") S.status = "gaveup";
+    } else {
+      const pool = hard ? answersHard : answers;
+      S = freshState(pool[Math.floor(Math.random() * pool.length)], "p");
+    }
     S.hard = hard;
     levelPrefix = null;
-    typed = ""; render();
+    typed = ""; savePractice(); render();
+  }
+  function savePractice() {
+    if (mode !== "practice") return;
+    store.set(practiceKey(), { answer: S.answer, guesses: S.guesses.map(g => g.w), gaveUp: S.status === "gaveup" });
+  }
+  // Сдаться можно только в тренировке: слово дня общее, и его ответ не стоит показывать раньше времени
+  function giveUp() {
+    if (mode !== "practice" || !S || S.status !== "play") return;
+    S.status = "gaveup"; typed = "";
+    savePractice(); render();
   }
   function saveDaily() {
     if (mode !== "daily") return;
@@ -378,7 +402,7 @@ dialog a{color:inherit}
     typed = "";
     const last = S.guesses[S.guesses.length - 1];
     if (S.status !== "play" && mode === "daily" && !S.counted) { recordStats(); S.counted = true; }
-    saveDaily();
+    saveDaily(); savePractice();
     render(last.d);
   }
   function fail(msg) {
@@ -438,8 +462,8 @@ dialog a{color:inherit}
   function renderInput() {
     const row = $("inputRow");
     row.classList.toggle("won", S.status === "won");
-    row.classList.toggle("lost", S.status === "lost");
-    const word = S.status === "won" || S.status === "lost" ? S.answer : typed;
+    row.classList.toggle("lost", S.status === "lost" || S.status === "gaveup");
+    const word = S.status === "play" ? typed : S.answer;
     fillRow(row, word, 0, i => (i < word.length ? "filled" : (i === word.length && S.status === "play" ? "cursor" : "")));
     const ek = $("enterKey"); if (ek) ek.classList.toggle("ready", S.status === "play" && typed.length === LEN);
     row.setAttribute("aria-label", S.status === "play" ? "Ваше слово: " + (typed || "пусто") : "Ответ: " + S.answer);
@@ -495,12 +519,13 @@ dialog a{color:inherit}
     return PAD + (k + (c - l.start) / (l.end - l.start)) * slot;
   }
   function renderStrip() {
-    const won = S.status === "won";
+    const won = S.status === "won" || S.status === "gaveup";
     const prefix = S.top.slice(0, commonPrefix(S.top, S.bottom));
     const r = $("range");
     const zoomIn = levelPrefix !== null && prefix.length > levelPrefix.length;
     if (prefix !== levelPrefix) { buildLevel(prefix); levelPrefix = prefix; }
     $("strip").classList.toggle("won", won);
+    $("strip").classList.toggle("gaveup", S.status === "gaveup");
     let a, b;
     if (won) {                       // после победы шкала показывает место самого ответа
       const x = allowedIdx.get(S.answer);
@@ -546,6 +571,7 @@ dialog a{color:inherit}
 
   function renderStatus() {
     const used = S.guesses.length;
+    $("giveUpBtn").hidden = !(mode === "practice" && S.status === "play");
     $("counter").textContent = S.status === "play" ? "Попытка " + (used + 1) + " из " + MAX : "Попыток: " + used + " из " + MAX;
     const ticks = $("ticks"); ticks.innerHTML = "";
     for (let i = 0; i < MAX; i++) {
@@ -561,7 +587,7 @@ dialog a{color:inherit}
     $("kb").style.display = over ? "none" : "";
     if (!over) return;
     const n = S.guesses.length;
-    $("resultTitle").textContent = S.status === "won" ? "Угадано за " + n + " " + plural(n, "попытку", "попытки", "попыток") : "Попытки закончились";
+    $("resultTitle").textContent = S.status === "won" ? "Угадано за " + n + " " + plural(n, "попытку", "попытки", "попыток") : S.status === "gaveup" ? "Вы сдались" : "Попытки закончились";
     $("resultText").textContent = S.status === "won" ? "Слово — " + S.answer.toUpperCase() + "." : "Загаданное слово — " + S.answer.toUpperCase() + ".";
     $("againBtn").textContent = mode === "daily" ? "Потренироваться" : "Ещё слово";
     const st = store.get("stats", null);
@@ -590,7 +616,7 @@ dialog a{color:inherit}
   }
   $("shareBtn").addEventListener("click", async () => {
     const icons = S.guesses.map(g => (g.d === "=" ? "🟩" : g.d === "t" ? "⬇️" : "⬆️")).join("");
-    const head = "Между" + (mode === "daily" ? " #" + S.id : S.hard ? " (сложная тренировка)" : " (тренировка)") + " — " + (S.status === "won" ? S.guesses.length : "X") + "/" + MAX;
+    const head = "Между" + (mode === "daily" ? " #" + S.id : S.hard ? " (сложная тренировка)" : " (тренировка)") + " — " + (S.status === "won" ? S.guesses.length : S.status === "gaveup" ? "сдался, " + S.guesses.length : "X") + "/" + MAX;
     const url = location.href.split("#")[0].split("?")[0];
     const text = head + "\n" + icons + "\n" + url;
     try {
@@ -598,11 +624,12 @@ dialog a{color:inherit}
       await navigator.clipboard.writeText(text); toast("Результат скопирован");
     } catch { toast(""); }
   });
-  $("againBtn").addEventListener("click", startPractice);
-  $("diffNormal").addEventListener("click", () => { hard = false; store.set("hard", false); startPractice(); });
-  $("diffHard").addEventListener("click", () => { hard = true; store.set("hard", true); startPractice(); });
+  $("giveUpBtn").addEventListener("click", giveUp);
+  $("againBtn").addEventListener("click", () => startPractice(mode === "practice"));
+  $("diffNormal").addEventListener("click", () => { if (!hard && mode === "practice") return; hard = false; store.set("hard", false); startPractice(false); });
+  $("diffHard").addEventListener("click", () => { if (hard && mode === "practice") return; hard = true; store.set("hard", true); startPractice(false); });
   $("modeDaily").addEventListener("click", () => { if (answers.length) startDaily(); });
-  $("modePractice").addEventListener("click", () => { if (answers.length) startPractice(); });
+  $("modePractice").addEventListener("click", () => { if (answers.length && mode !== "practice") startPractice(false); });
   $("helpBtn").addEventListener("click", () => $("help").showModal());
   $("aboutBtn").addEventListener("click", () => $("about").showModal());
 
