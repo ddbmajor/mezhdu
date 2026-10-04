@@ -55,9 +55,14 @@ h1{font-family:var(--display);font-weight:800;font-size:1.6rem;letter-spacing:-.
 .modes button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 
 .board{display:grid;grid-template-columns:40px 1fr;gap:14px;align-items:stretch}
-.strip{position:relative;border-radius:8px;background:var(--paper);border:1px solid var(--line);overflow:hidden;min-height:360px;min-height:clamp(320px,52svh,430px)}
+.strip{position:relative;flex:1;border-radius:8px;background:var(--paper);border:1px solid var(--line);overflow:hidden;min-height:300px}
+/* Поле занимает всё свободное место между шапкой и клавиатурой (или карточкой результата),
+   поэтому и во время игры, и после неё всё помещается на один экран. На маленьких экранах — прокрутка. */
+#main{flex:1 1 auto;display:flex;flex-direction:column}
+#game:not([hidden]){flex:1;display:flex;flex-direction:column}
+.board{flex:1;max-height:640px}
 .strip .range{position:absolute;left:0;right:0;background:var(--lv-soft);box-shadow:inset 0 2px 0 var(--lv),inset 0 -2px 0 var(--lv);transition:top .35s ease,height .35s ease}
-.strip .mark{position:absolute;left:0;right:0;text-align:center;font-family:var(--display);font-size:.6rem;font-weight:700;color:var(--muted);transform:translateY(-50%);line-height:1}
+.strip .mark{position:absolute;left:0;right:0;text-align:center;font-family:var(--display);font-size:var(--mark-fs,.6rem);font-weight:700;color:var(--muted);transform:translateY(-50%);line-height:1}
 /* Уровни шкалы: 0 — первая буква, 1 — вторая и т. д. Свой цвет у зоны, метки и совпавших букв границ */
 .board{--lv:var(--accent);--lv-soft:var(--accent-soft);--lv-ink:#1D1606}
 .stripcol{display:flex;flex-direction:column;gap:4px}
@@ -107,8 +112,12 @@ h1{font-family:var(--display);font-weight:800;font-size:1.6rem;letter-spacing:-.
 .ticks i.used{background:var(--ink);border-color:var(--ink)}
 .ticks i.win{background:var(--hit);border-color:var(--hit)}
 
-.toast{min-height:1.5em;text-align:center;font-weight:600;font-size:.95rem}
-.toast.err{color:var(--err)}
+/* Сообщения всплывают поверх поля и не занимают места в раскладке */
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translateX(-50%);z-index:20;max-width:min(90vw,420px);
+  padding:10px 16px;border-radius:12px;background:var(--ink);color:var(--bg);text-align:center;font-weight:600;font-size:.95rem;
+  box-shadow:0 6px 20px rgba(0,0,0,.18);pointer-events:none;transition:opacity .2s}
+.toast:empty{opacity:0;padding:0}
+.toast.err{background:var(--err);color:#fff}
 
 .result{display:none;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:14px;border-radius:12px;background:var(--paper);border:1px solid var(--line)}
 .result.show{display:flex}
@@ -215,7 +224,7 @@ dialog a{color:inherit}
       <button class="btn" id="shareBtn">Поделиться</button>
       <button class="btn secondary" id="againBtn">Сыграть ещё</button>
     </div>
-    <p class="other">Ещё игра: <a href="https://ddbmajor.github.io/zvenya/" id="otherGameResult">«Звенья» — слово за словом по одной букве</a></p>
+    <p class="other">Ещё игра: <a href="https://ddbmajor.github.io/zvenya/" id="otherGameResult">«Звенья»</a></p>
   </section>
 
   <div class="kb" id="kb" aria-label="Клавиатура"></div>
@@ -502,6 +511,9 @@ dialog a{color:inherit}
     });
     marks.forEach(m => m.remove()); marks = [];
     const slot = (100 - 2 * PAD) / letters.length;
+    // размер букв подстраивается под высоту шкалы, чтобы 32 буквы не налезали друг на друга
+    const px = strip.clientHeight * slot / 100;
+    strip.style.setProperty("--mark-fs", Math.max(7, Math.min(11, px * 0.82)).toFixed(1) + "px");
     letters.forEach((l, i) => {
       const m = document.createElement("div"); m.className = "mark" + (l.empty && !S.hard ? " empty" : ""); m.textContent = l.ch.toUpperCase();
       m.style.top = (PAD + (i + 0.5) * slot) + "%";
@@ -584,6 +596,7 @@ dialog a{color:inherit}
     const box = $("result");
     const over = S.status !== "play";
     box.classList.toggle("show", over);
+    $("toast").style.display = over ? "none" : "";
     $("kb").style.display = over ? "none" : "";
     if (!over) return;
     const n = S.guesses.length;
@@ -625,6 +638,7 @@ dialog a{color:inherit}
     } catch { toast(""); }
   });
   $("giveUpBtn").addEventListener("click", giveUp);
+  window.addEventListener("resize", () => { if (S) { levelPrefix = null; renderStrip(); } });
   $("againBtn").addEventListener("click", () => startPractice(mode === "practice"));
   $("diffNormal").addEventListener("click", () => { if (!hard && mode === "practice") return; hard = false; store.set("hard", false); startPractice(false); });
   $("diffHard").addEventListener("click", () => { if (hard && mode === "practice") return; hard = true; store.set("hard", true); startPractice(false); });
