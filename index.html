@@ -522,12 +522,21 @@ dialog a{color:inherit}
     $("board").dataset.level = Math.min(k, 4);
     $("stripLabel").textContent = prefix ? prefix.toUpperCase() + "…" : "";
   }
-  // Положение «щели» между словами allowed[c-1] и allowed[c] на текущем уровне шкалы
+  // Верхний край зоны: начало слова allowed[c]
   function gapPos(c) {
     if (c <= levelLo) return PAD;
     if (c >= levelHi) return 100 - PAD;
     const slot = (100 - 2 * PAD) / letters.length;
     const k = letters.findIndex(l => !l.empty && c >= l.start && c < l.end), l = letters[k];
+    return PAD + (k + (c - l.start) / (l.end - l.start)) * slot;
+  }
+  // Нижний край зоны: конец слова allowed[c-1]. Считаем внутри ячейки самого слова — иначе
+  // зона «перепрыгивала» пустые буквы после него и становилась шире, чем нужно.
+  function gapEnd(c) {
+    if (c <= levelLo) return PAD;
+    if (c > levelHi) return 100 - PAD;
+    const slot = (100 - 2 * PAD) / letters.length;
+    const k = letters.findIndex(l => !l.empty && c - 1 >= l.start && c - 1 < l.end), l = letters[k];
     return PAD + (k + (c - l.start) / (l.end - l.start)) * slot;
   }
   function renderStrip() {
@@ -541,10 +550,12 @@ dialog a{color:inherit}
     let a, b;
     if (won) {                       // после победы шкала показывает место самого ответа
       const x = allowedIdx.get(S.answer);
-      a = gapPos(x); b = gapPos(x + 1);
+      // после победы — тонкая черта посередине места ответа, а не вся ячейка буквы
+      const mid = (gapPos(x) + gapEnd(x + 1)) / 2;
+      a = mid - 0.4; b = mid + 0.4;
     } else {
       a = gapPos(S.top === START_TOP ? 0 : allowedIdx.get(S.top));
-      b = gapPos(S.bottom === START_BOTTOM ? allowed.length : allowedIdx.get(S.bottom) + 1);
+      b = S.bottom === START_BOTTOM ? 100 - PAD : gapEnd(allowedIdx.get(S.bottom) + 1);
     }
     if (zoomIn) {                    // «приближение»: зона на миг занимает всю шкалу, потом сужается
       r.style.transition = "none";
