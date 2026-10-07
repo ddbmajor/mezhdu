@@ -163,6 +163,44 @@ dialog a{color:inherit}
 .other{font-size:.85rem;color:var(--muted)}
 .other a{color:var(--ink);font-weight:600}
 .foot a{color:var(--muted);padding:4px;text-underline-offset:3px}
+/* ---------- окно статистики ---------- */
+:root{--chart:#268A5C}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--chart:#4FA37E}}
+:root[data-theme="dark"]{--chart:#4FA37E}
+.linkbtn{background:none;border:0;padding:0;font:inherit;color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+dialog.stats-dlg{width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32px);padding:0;overflow:auto;overscroll-behavior:contain}
+.sd-head{position:sticky;top:0;z-index:1;background:var(--paper);padding:16px 18px 10px;border-bottom:1px solid var(--line)}
+.sd-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.sd-top h2{margin:0}
+.sd-filter{width:100%}
+.sd-filter button{flex:1;padding:0 4px;font-size:.8rem}
+.sd-body{padding:14px 18px 18px}
+.sd-note,.legend{font-size:.78rem;color:var(--muted);margin:8px 0 0;line-height:1.35}
+.sd-body>.sd-note{margin:18px 0 6px}
+.sd-empty{color:var(--muted);margin:8px 0}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{background:var(--bg);border-radius:10px;padding:10px 6px;text-align:center}
+.kpi b{display:block;font-family:var(--display);font-weight:700;font-size:1.15rem;line-height:1.2;font-variant-numeric:tabular-nums}
+.kpi span{display:block;font-size:.72rem;color:var(--muted);line-height:1.2;margin-top:3px}
+.facts{margin:0}
+.facts div{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.88rem}
+.facts div:last-child{border-bottom:0}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.chart{margin:4px 0 8px}
+.cols{display:flex;gap:2px;height:104px;padding-top:18px;border-bottom:1px solid var(--line)}
+.col{position:relative;flex:1;min-width:0;height:100%;display:flex;align-items:flex-end;justify-content:center;border:0;background:none;padding:0;cursor:pointer;touch-action:manipulation}
+.col i{display:block;width:100%;max-width:24px;background:var(--chart);border-radius:4px 4px 0 0}
+.col:hover i,.col.on i{background:var(--ink)}
+.col .x{font-size:.72rem;line-height:1;color:var(--muted);margin-bottom:3px}
+.col.on .x{color:var(--ink);font-weight:700}
+.col .cap{position:absolute;left:50%;transform:translateX(-50%);font-size:.7rem;font-weight:600;color:var(--ink);line-height:1}
+.xax{display:flex;gap:2px;margin-top:4px}
+.xax span{flex:1;min-width:0;text-align:center;font-size:.64rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.tip{margin:8px 0 0;font-size:.84rem;color:var(--ink);min-height:1.3em}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip-w{font-family:var(--display);font-size:.68rem;font-weight:700;background:var(--bg);border-radius:8px;padding:5px 8px}
+.chip-w small{font-family:var(--body);font-weight:500;font-size:.72rem;color:var(--muted);margin-left:5px}
 .loading{padding:40px 0;text-align:center;color:var(--muted)}
 .shake{animation:shake .35s}
 @keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
@@ -224,15 +262,33 @@ dialog a{color:inherit}
       <button class="btn" id="shareBtn">Поделиться</button>
       <button class="btn secondary" id="againBtn">Сыграть ещё</button>
     </div>
-    <p class="other">Ещё игра: <a href="https://ddbmajor.github.io/zvenya/" id="otherGameResult">«Звенья»</a></p>
+    <p class="other"><button type="button" class="linkbtn" id="statsBtn2">Вся статистика</button> · Ещё игра: <a href="https://ddbmajor.github.io/zvenya/" id="otherGameResult">«Звенья»</a></p>
   </section>
 
   <div class="kb" id="kb" aria-label="Клавиатура"></div>
   <footer class="foot">
+    <button type="button" id="statsBtn">Статистика</button>
     <a href="https://ddbmajor.github.io/zvenya/" id="otherGameFoot">Ещё игра: «Звенья»</a>
-    <button type="button" id="aboutBtn">О сайте и данных</button>
+    <button type="button" id="aboutBtn">О сайте</button>
   </footer>
 </div>
+
+<dialog id="statsDlg" class="stats-dlg" aria-labelledby="statsTitle">
+  <div class="sd-head">
+    <div class="sd-top"><h2 id="statsTitle">Статистика</h2><button type="button" class="icon-btn" id="statsClose" aria-label="Закрыть">✕</button></div>
+    <div class="lens sd-filter" id="statFilter" role="group" aria-label="Какие партии считать">
+      <button type="button" data-f="all" aria-pressed="true">Все</button>
+      <button type="button" data-f="d" aria-pressed="false">Слово дня</button>
+      <button type="button" data-f="p" aria-pressed="false">Тренировка</button>
+      <button type="button" data-f="h" aria-pressed="false">Сложная</button>
+    </div>
+  </div>
+  <div class="sd-body">
+    <div id="statsBody"></div>
+    <p class="sd-note">Статистика хранится только в этом браузере и никуда не отправляется. Если очистить данные сайта или открыть игру в другом браузере, она начнётся заново.</p>
+    <button type="button" class="giveup" id="statsReset">Сбросить статистику</button>
+  </div>
+</dialog>
 
 <dialog id="about">
   <h2>О сайте</h2>
@@ -351,7 +407,9 @@ dialog a{color:inherit}
     levelPrefix = null;
     if (saved && saved.id === n) {
       saved.guesses.forEach(w => { if (S.status === "play") apply(S, w); });
-      S.counted = saved.counted;
+      S.counted = saved.counted; S.logged = saved.logged; restoreMeta(saved.meta);
+      // партия закончена до появления журнала статистики — дописываем её туда один раз
+      if (S.status !== "play" && S.counted && !S.logged) { logGame(); S.logged = true; saveDaily(); }
     }
     typed = ""; render();
   }
@@ -365,6 +423,7 @@ dialog a{color:inherit}
       S = freshState(saved.answer, "p");
       saved.guesses.forEach(w => { if (S.status === "play") apply(S, w); });
       if (saved.gaveUp && S.status === "play") S.status = "gaveup";
+      restoreMeta(saved.meta);
     } else {
       const pool = hard ? answersHard : answers;
       S = freshState(pool[Math.floor(Math.random() * pool.length)], "p");
@@ -375,17 +434,19 @@ dialog a{color:inherit}
   }
   function savePractice() {
     if (mode !== "practice") return;
-    store.set(practiceKey(), { answer: S.answer, guesses: S.guesses.map(g => g.w), gaveUp: S.status === "gaveup" });
+    store.set(practiceKey(), { answer: S.answer, guesses: S.guesses.map(g => g.w), gaveUp: S.status === "gaveup", meta: meta() });
   }
   // Сдаться можно только в тренировке: слово дня общее, и его ответ не стоит показывать раньше времени
   function giveUp() {
     if (mode !== "practice" || !S || S.status !== "play") return;
     S.status = "gaveup"; typed = "";
+    if (S.lastT) { const now = Date.now(); S.active = (S.active || 0) + Math.min(now - S.lastT, 180000); S.lastT = now; }
+    logGame();
     savePractice(); render();
   }
   function saveDaily() {
     if (mode !== "daily") return;
-    store.set("day", { id: S.id, guesses: S.guesses.map(g => g.w), counted: !!S.counted });
+    store.set("day", { id: S.id, guesses: S.guesses.map(g => g.w), counted: !!S.counted, logged: !!S.logged, meta: meta() });
   }
   function setModeButtons() {
     $("modeDaily").setAttribute("aria-pressed", mode === "daily");
@@ -400,17 +461,24 @@ dialog a{color:inherit}
     if (!S || S.status !== "play") return;
     if (k === "enter") return submit();
     if (k === "back") { typed = typed.slice(0, -1); toast(""); return renderInput(); }
-    if (/^[а-яё]$/.test(k) && typed.length < LEN) { typed += norm(k); toast(""); renderInput(); }
+    if (/^[а-яё]$/.test(k) && typed.length < LEN) {
+      if (!S.lastT) S.lastT = Date.now();   // время партии идёт с первой введённой буквы
+      typed += norm(k); toast(""); renderInput();
+    }
   }
   function submit() {
     const w = typed;
     if (w.length < LEN) return fail("Нужно 5 букв");
-    if (!allowedIdx.has(w)) return fail("Такого слова нет в словаре");
-    if (w <= S.top || w >= S.bottom) return fail("Слово должно быть между " + S.top.toUpperCase() + " и " + S.bottom.toUpperCase());
+    if (!allowedIdx.has(w)) { S.eb = (S.eb || 0) + 1; saveDaily(); savePractice(); return fail("Такого слова нет в словаре"); }
+    if (w <= S.top || w >= S.bottom) { S.er = (S.er || 0) + 1; saveDaily(); savePractice(); return fail("Слово должно быть между " + S.top.toUpperCase() + " и " + S.bottom.toUpperCase()); }
+    // активное время: паузы длиннее 3 минут не считаются (отошли от телефона)
+    const now = Date.now();
+    S.active = (S.active || 0) + Math.min(now - (S.lastT || now), 180000); S.lastT = now;
     apply(S, w);
     typed = "";
     const last = S.guesses[S.guesses.length - 1];
-    if (S.status !== "play" && mode === "daily" && !S.counted) { recordStats(); S.counted = true; }
+    if (S.status !== "play" && mode === "daily" && !S.counted) { recordStats(); S.counted = true; logGame(); S.logged = true; }
+    if (S.status !== "play" && mode === "practice") logGame();
     saveDaily(); savePractice();
     render(last.d);
   }
@@ -500,6 +568,14 @@ dialog a{color:inherit}
     while (lo < hi) { const m = (lo + hi) >> 1; if (allowed[m] < w) lo = m + 1; else hi = m; }
     return lo;
   }
+  // Размер букв подстраивается под высоту шкалы, чтобы 32 буквы не налезали друг на друга.
+  // Высота меняется не только при повороте экрана: после конца партии клавиатуру сменяет карточка
+  // результата, и шкала становится ниже, — поэтому следим за самой шкалой.
+  function fitMarks() {
+    const strip = $("strip"), px = strip.clientHeight * (100 - 2 * PAD) / 100 / ALPHABET.length;
+    if (px > 0) strip.style.setProperty("--mark-fs", Math.max(6, Math.min(11, px * 0.82)).toFixed(1) + "px");
+  }
+  if (window.ResizeObserver) new ResizeObserver(fitMarks).observe($("strip"));
   function buildLevel(prefix) {
     const k = prefix.length, strip = $("strip");
     levelLo = lowerBound(prefix);
@@ -511,9 +587,7 @@ dialog a{color:inherit}
     });
     marks.forEach(m => m.remove()); marks = [];
     const slot = (100 - 2 * PAD) / letters.length;
-    // размер букв подстраивается под высоту шкалы, чтобы 32 буквы не налезали друг на друга
-    const px = strip.clientHeight * slot / 100;
-    strip.style.setProperty("--mark-fs", Math.max(7, Math.min(11, px * 0.82)).toFixed(1) + "px");
+    fitMarks();
     letters.forEach((l, i) => {
       const m = document.createElement("div"); m.className = "mark" + (l.empty && !S.hard ? " empty" : ""); m.textContent = l.ch.toUpperCase();
       m.style.top = (PAD + (i + 0.5) * slot) + "%";
@@ -638,6 +712,234 @@ dialog a{color:inherit}
     st.lastDay = S.id;
     store.set("stats", st);
   }
+  // ---------- подробная статистика ----------
+  // Каждая законченная партия записывается в журнал в localStorage. Все цифры в окне «Статистика»
+  // считаются из него на лету, поэтому новые метрики можно добавлять без миграций.
+  // Запись: m — режим (d слово дня, p тренировка, h сложная), id — номер дня, a — ответ, g — введённые слова,
+  // r — итог (w победа, l попытки кончились, g сдался), t — когда закончена, s — активное время (с),
+  // eb/er — отклонённые слова (нет в словаре / мимо диапазона), cs/cn — сумма и число «сужений» диапазона,
+  // dn/up — сколько раз ответ был позже / раньше введённого слова.
+  const LOG_MAX = 2000;
+  function getLog() {
+    const l = store.get("log", []);
+    return Array.isArray(l) ? l.filter(e => e && typeof e.a === "string" && Array.isArray(e.g) && "wlg".includes(e.r) && "dph".includes(e.m)) : [];
+  }
+  function logGame() {
+    let t = 0, b = allowed.length + 1, cs = 0, cn = 0, dn = 0, up = 0;
+    S.guesses.forEach(g => {
+      if (g.d === "=") return;
+      const r = rank(g.w), before = b - t - 1;
+      if (g.d === "t") { t = r; dn++; } else { b = r; up++; }
+      if (before > 0) { cs += 1 - (b - t - 1) / before; cn++; }
+    });
+    const log = getLog();
+    log.push({ m: mode === "daily" ? "d" : S.hard ? "h" : "p", id: mode === "daily" ? S.id : 0, a: S.answer,
+      g: S.guesses.map(g => g.w), r: S.status === "won" ? "w" : S.status === "gaveup" ? "g" : "l", t: Date.now(),
+      s: Math.round((S.active || 0) / 1000), eb: S.eb || 0, er: S.er || 0, cs: Math.round(cs * 1000) / 1000, cn, dn, up });
+    store.set("log", log.slice(-LOG_MAX));
+  }
+  function meta() { return { a: S.active || 0, l: S.lastT || 0, eb: S.eb || 0, er: S.er || 0 }; }
+  function restoreMeta(m) { if (m) { S.active = m.a || 0; S.lastT = m.l || 0; S.eb = m.eb || 0; S.er = m.er || 0; } }
+
+  const fmt1 = x => (Math.round(x * 10) / 10).toFixed(1).replace(".", ",");
+  const pct = x => Math.round(100 * x) + "%";
+  const up5 = w => String(w).replace(/[^а-яё]/gi, "").slice(0, 8).toUpperCase();
+  const sum = a => a.reduce((x, y) => x + y, 0);
+  function dur(sec) {
+    sec = Math.round(sec);
+    if (sec < 60) return sec + " с";
+    if (sec < 3600) return Math.floor(sec / 60) + " мин" + (sec % 60 ? " " + (sec % 60) + " с" : "");
+    return Math.floor(sec / 3600) + " ч " + Math.floor((sec % 3600) / 60) + " мин";
+  }
+  function dateStr(t) {
+    const d = new Date(t), now = new Date();
+    return d.toLocaleDateString("ru-RU", d.getFullYear() === now.getFullYear() ? { day: "numeric", month: "long" } : { day: "numeric", month: "long", year: "numeric" });
+  }
+  const tries = n => n + " " + plural(n, "попытку", "попытки", "попыток");
+  const games = n => n + " " + plural(n, "партия", "партии", "партий");
+  // Сколько попыток в среднем нужно, если каждый раз делить словарь ровно пополам
+  function bisectAvg(N) {
+    let total = 0, left = N, level = 1, d = 1;
+    while (left > 0) { const k = Math.min(level, left); total += k * d; left -= k; level *= 2; d++; }
+    return total / N;
+  }
+  function topOf(counts) {     // [[ключ, число], …] по убыванию
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
+  }
+  function countBy(arr) { const m = new Map(); arr.forEach(x => m.set(x, (m.get(x) || 0) + 1)); return m; }
+
+  // Столбиковая диаграмма: один ряд, подписан только самый высокий столбик, остальное — по нажатию
+  function colChart(items, max, tip) {
+    const top = Math.max(...items.map(it => it.v || 0));
+    const cols = items.map(it => {
+      const h = it.v > 0 ? Math.max(4, Math.round(100 * it.v / max)) : 0;
+      return '<button type="button" class="col" data-tip="' + it.tip + '" aria-label="' + it.tip + '">' +
+        (it.cap && it.v === top && top > 0 ? '<span class="cap" style="bottom:calc(' + h + '% + 3px)">' + it.v + "</span>" : "") +
+        (it.miss ? '<span class="x">✕</span>' : '<i style="height:' + h + '%"></i>') + "</button>";
+    }).join("");
+    const xax = items[0].label !== undefined ? '<div class="xax">' + items.map(it => "<span>" + it.label + "</span>").join("") + "</div>" : "";
+    return '<div class="chart"><div class="cols">' + cols + "</div>" + xax + '<p class="tip">' + tip + "</p></div>";
+  }
+  const kpi = (v, label) => "<div class=\"kpi\"><b>" + v + "</b><span>" + label + "</span></div>";
+  const fact = (label, v) => "<div><dt>" + label + "</dt><dd>" + v + "</dd></div>";
+
+  let statFilter = "all", resetArmed = 0;
+  function renderStats() {
+    const all = getLog(), f = statFilter;
+    const st = store.get("stats", null) || { played: 0, won: 0, streak: 0, best: 0, lastDay: 0 };
+    const log = f === "all" ? all : all.filter(e => e.m === f);
+    document.querySelectorAll("#statFilter button").forEach(b => b.setAttribute("aria-pressed", b.dataset.f === f));
+    const body = $("statsBody"), h = [];
+    // Партии слова дня, сыгранные до появления журнала: есть только в общем счёте
+    const dLog = all.filter(e => e.m === "d");
+    const legacy = f === "all" || f === "d" ? Math.max(0, (st.played || 0) - dLog.length) : 0;
+    const legacyWon = Math.min(legacy, Math.max(0, (st.won || 0) - dLog.filter(e => e.r === "w").length));
+    const n = log.length, wins = log.filter(e => e.r === "w"), att = wins.map(e => e.g.length);
+    $("statsReset").style.display = all.length || st.played ? "" : "none";
+    if (!n && !legacy) {
+      body.innerHTML = '<p class="sd-empty">' + (all.length || st.played ? "В этом режиме партий пока нет." : "Пока нет сыгранных партий. Сыграйте слово дня или тренировку — и здесь появятся цифры.") + "</p>";
+      return;
+    }
+
+    // --- главное ---
+    let cur = 0, best = 0;
+    if (f === "p" || f === "h") { let run = 0; log.forEach(e => { run = e.r === "w" ? run + 1 : 0; best = Math.max(best, run); }); cur = run; }
+    else { cur = st.lastDay >= dayNumber() - 1 ? st.streak || 0 : 0; best = st.best || 0; }
+    const daily = f === "all" || f === "d";
+    const total = n + legacy, won = wins.length + legacyWon;
+    h.push('<div class="kpis">' +
+      kpi(total, plural(total, "партия", "партии", "партий")) +
+      kpi(pct(won / total), "побед") +
+      kpi(att.length ? fmt1(sum(att) / att.length) : "—", "попыток в среднем") +
+      kpi(att.length ? Math.min(...att) : "—", "лучший результат") +
+      kpi(cur, daily ? "дней подряд" : "побед подряд") +
+      kpi(best, daily ? "рекорд серии" : "рекорд подряд") + "</div>");
+    if (legacy) h.push('<p class="sd-note">Из них ' + games(legacy) + " слова дня сыграны до появления подробной статистики: они учтены только в общем счёте и сериях.</p>");
+    if (!n) { body.innerHTML = h.join(""); return; }
+
+    // --- попытки ---
+    if (att.length) {
+      const counts = Array(MAX + 1).fill(0); att.forEach(a => counts[a]++);
+      const maxC = Math.max(...counts), modeA = counts.indexOf(maxC);
+      const sorted = [...att].sort((a, b) => a - b), med = sorted.length % 2 ? sorted[(sorted.length - 1) / 2] : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2;
+      h.push("<h3>За сколько попыток угадываете</h3>" + colChart(
+        Array.from({ length: MAX }, (_, i) => ({ label: i + 1, v: counts[i + 1], cap: true,
+          tip: counts[i + 1] ? "За " + tries(i + 1) + " — " + games(counts[i + 1]) + " (" + pct(counts[i + 1] / att.length) + " побед)" : "За " + tries(i + 1) + " — ни разу" })),
+        maxC, "Чаще всего — за " + tries(modeA)));
+      const lost = log.filter(e => e.r === "l").length, gave = log.filter(e => e.r === "g").length;
+      h.push('<dl class="facts">' +
+        fact("Медиана", Number.isInteger(med) ? tries(med) : fmt1(med) + " попытки") +
+        fact("Побед за 8 попыток и быстрее", att.filter(a => a <= 8).length) +
+        fact("Самая долгая победа", tries(Math.max(...att))) +
+        fact("Попытки закончились", lost) +
+        (gave || f !== "d" ? fact("Сдались", gave) : "") + "</dl>");
+    } else h.push('<p class="sd-empty">Побед в этом режиме пока нет.</p>');
+
+    // --- последние партии ---
+    if (n >= 3) {
+      const last = log.slice(-30);
+      h.push("<h3>Последние партии</h3>" + colChart(last.map(e => e.r === "w"
+        ? { v: e.g.length, tip: up5(e.a) + " — " + tries(e.g.length) + ", " + dateStr(e.t) }
+        : { v: 0, miss: true, tip: up5(e.a) + " — не угадано, " + dateStr(e.t) }), MAX,
+        "Нажмите на столбик, чтобы увидеть слово") +
+        '<p class="legend">Высота столбика — число попыток, ✕ — слово не угадано. Слева старые партии, справа новые.</p>');
+      if (att.length >= 15) {
+        const rec = sum(att.slice(-10)) / 10, prev = sum(att.slice(0, -10)) / (att.length - 10), d = prev - rec;
+        h.push('<dl class="facts">' + fact("Последние 10 побед", fmt1(rec) + " попытки в среднем") +
+          fact("Динамика", Math.abs(d) < 0.05 ? "как и раньше" : "на " + fmt1(Math.abs(d)) + (d > 0 ? " лучше, чем раньше" : " хуже, чем раньше")) + "</dl>");
+      }
+    }
+
+    // --- стиль игры ---
+    const facts = [];
+    const cn = sum(log.map(e => e.cn || 0)), cs = sum(log.map(e => e.cs || 0));
+    if (cn) facts.push(fact("Один ход сужает диапазон на", pct(cs / cn)));
+    if (att.length) {
+      const robot = bisectAvg(allowed.length), me = sum(att) / att.length, d = robot - me;
+      facts.push(fact("Робот-половинщик", fmt1(robot) + " попытки"));
+      facts.push(fact("Вы против робота", Math.abs(d) < 0.05 ? "наравне" : "на " + fmt1(Math.abs(d)) + (d > 0 ? " быстрее" : " медленнее")));
+    }
+    const dn = sum(log.map(e => e.dn || 0)), up = sum(log.map(e => e.up || 0));
+    if (dn + up >= 5) facts.push(fact("Чаще называете слова", dn === up ? "до и после поровну" : (dn > up ? "до ответа" : "после ответа") + " · " + pct(Math.max(dn, up) / (dn + up))));
+    const timed = log.filter(e => e.s > 0);
+    if (timed.length) {
+      const secs = sum(timed.map(e => e.s)), moves = sum(timed.map(e => e.g.length));
+      facts.push(fact("Среднее время партии", dur(secs / timed.length)));
+      if (moves) facts.push(fact("В среднем на один ход", dur(secs / moves)));
+      const tw = timed.filter(e => e.r === "w").sort((a, b) => a.s - b.s)[0];
+      if (tw) facts.push(fact("Самая быстрая победа", up5(tw.a) + " — " + dur(tw.s)));
+      facts.push(fact("Всего времени в игре", dur(secs)));
+    }
+    const eb = sum(log.map(e => e.eb || 0)), er = sum(log.map(e => e.er || 0));
+    facts.push(fact("Слов не из словаря", eb));
+    facts.push(fact("Слов мимо диапазона", er));
+    facts.push(fact("Партий без ошибок ввода", log.filter(e => !e.eb && !e.er).length + " из " + n));
+    h.push('<h3>Как вы играете</h3><dl class="facts">' + facts.join("") + "</dl>" +
+      '<p class="legend">Робот-половинщик каждым ходом делит словарь ровно пополам: диапазон сужается на 50%.</p>');
+
+    // --- слова ---
+    const words = log.flatMap(e => e.g), wc = countBy(words), common = new Set(answers);
+    if (words.length) {
+      const firsts = topOf(countBy(log.map(e => e.g[0]).filter(Boolean))), letters = topOf(countBy(words.map(w => w[0])));
+      const rare = [...wc.keys()].filter(w => !common.has(w)).length;
+      const wf = ['<dl class="facts">', fact("Введено слов", words.length), fact("Разных слов", wc.size), fact("Из них редких", rare)];
+      if (firsts.length) wf.push(fact("Любимое первое слово", up5(firsts[0][0]) + " · " + firsts[0][1] + " " + plural(firsts[0][1], "раз", "раза", "раз")));
+      wf.push(fact("Любимая первая буква", "«" + up5(letters[0][0]) + "» · " + pct(letters[0][1] / words.length) + " слов"), "</dl>");
+      h.push("<h3>Ваши слова</h3>" + wf.join(""));
+      const fav = topOf(wc).filter(x => x[1] >= 2).slice(0, 8);
+      if (fav.length) h.push('<p class="legend">Чаще всего вводите:</p><div class="chips">' + fav.map(x => '<span class="chip-w">' + up5(x[0]) + "<small>×" + x[1] + "</small></span>").join("") + "</div>");
+    }
+
+    // --- рекорды ---
+    const rec = [];
+    if (wins.length) {
+      const bestG = wins.reduce((a, e) => (e.g.length < a.g.length ? e : a)), worstG = wins.reduce((a, e) => (e.g.length > a.g.length ? e : a));
+      rec.push(fact("Лучшая партия", up5(bestG.a) + " — " + tries(bestG.g.length)));
+      if (worstG.g.length > bestG.g.length) rec.push(fact("Самая трудная победа", up5(worstG.a) + " — " + tries(worstG.g.length)));
+    }
+    const fails = log.filter(e => e.r !== "w").slice(-6).reverse();
+    if (fails.length) rec.push(fact("Не поддались", fails.map(e => up5(e.a)).join(", ")));
+    if (rec.length) h.push('<h3>Рекорды</h3><dl class="facts">' + rec.join("") + "</dl>");
+
+    // --- активность ---
+    const dayKey = t => { const d = new Date(t); return d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate(); };
+    const days = countBy(log.map(e => dayKey(e.t))), busiest = topOf(days)[0];
+    const busyT = log.find(e => dayKey(e.t) === busiest[0]).t;
+    const wd = Array(7).fill(0); log.forEach(e => wd[(new Date(e.t).getDay() + 6) % 7]++);
+    const WD = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"], WDP = ["понедельникам", "вторникам", "средам", "четвергам", "пятницам", "субботам", "воскресеньям"];
+    const maxWd = Math.max(...wd), topWd = wd.indexOf(maxWd);
+    const hours = [0, 0, 0, 0]; log.forEach(e => hours[Math.floor(new Date(e.t).getHours() / 6)]++);
+    const HN = ["ночью", "утром", "днём", "вечером"], topH = hours.indexOf(Math.max(...hours));
+    h.push("<h3>Когда вы играете</h3>" + colChart(wd.map((v, i) => ({ label: WD[i], v, cap: true, tip: "По " + WDP[i] + " — " + games(v) })), maxWd || 1,
+      wd.filter(v => v === maxWd).length === 1 ? "Чаще всего — по " + WDP[topWd] : "Нажмите на столбик, чтобы увидеть число партий") +
+      '<dl class="facts">' + fact("Первая партия", dateStr(Math.min(...log.map(e => e.t)))) +
+      fact("Дней с игрой", days.size) +
+      fact("Партий за день в среднем", fmt1(n / days.size)) +
+      fact("Рекорд за день", games(busiest[1]) + " · " + dateStr(busyT)) +
+      fact("Чаще играете", HN[topH] + " (" + pct(hours[topH] / n) + ")") + "</dl>");
+
+    body.innerHTML = h.join("");
+  }
+  function openStats() { statFilter = "all"; resetArmed = 0; $("statsReset").textContent = "Сбросить статистику"; renderStats(); $("statsDlg").showModal(); $("statsDlg").scrollTop = 0; }
+  $("statsBtn").addEventListener("click", openStats);
+  $("statsBtn2").addEventListener("click", openStats);
+  $("statsClose").addEventListener("click", () => $("statsDlg").close());
+  $("statsDlg").addEventListener("click", e => { if (e.target === $("statsDlg")) $("statsDlg").close(); });
+  $("statFilter").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { statFilter = b.dataset.f; renderStats(); } });
+  // Подсказка под диаграммой: по наведению, фокусу или нажатию на столбик
+  ["pointerover", "focusin", "click"].forEach(ev => $("statsBody").addEventListener(ev, e => {
+    const c = e.target.closest(".col"); if (!c) return;
+    const chart = c.closest(".chart");
+    chart.querySelectorAll(".col.on").forEach(x => x.classList.remove("on"));
+    c.classList.add("on"); chart.querySelector(".tip").textContent = c.dataset.tip;
+  }));
+  // Сброс в два нажатия, чтобы не стереть случайно
+  $("statsReset").addEventListener("click", () => {
+    if (Date.now() - resetArmed > 5000) { resetArmed = Date.now(); $("statsReset").textContent = "Точно сбросить? Нажмите ещё раз"; return; }
+    store.set("log", []); store.set("stats", { played: 0, won: 0, streak: 0, best: 0, lastDay: 0 });
+    resetArmed = 0; $("statsReset").textContent = "Статистика сброшена"; renderStats(); if (S) renderResult();
+  });
+
   $("shareBtn").addEventListener("click", async () => {
     const icons = S.guesses.map(g => (g.d === "=" ? "🟩" : g.d === "t" ? "⬇️" : "⬆️")).join("");
     const head = "Между" + (mode === "daily" ? " #" + S.id : S.hard ? " (сложная тренировка)" : " (тренировка)") + " — " + (S.status === "won" ? S.guesses.length : S.status === "gaveup" ? "сдался, " + S.guesses.length : "X") + "/" + MAX;
