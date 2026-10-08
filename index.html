@@ -177,6 +177,13 @@ dialog.stats-dlg{width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32
 .sd-body{padding:14px 18px 18px}
 .sd-note,.legend{font-size:.78rem;color:var(--muted);margin:8px 0 0;line-height:1.35}
 .sd-body>.sd-note{margin:18px 0 6px}
+.xfer{margin-top:22px;padding-top:4px;border-top:1px solid var(--line)}
+.xfer-btns{display:flex;gap:8px;margin-top:10px}
+.xfer-btns .btn{flex:1;padding:9px 10px;font-size:.85rem}
+.xfer-btns .btn:disabled{opacity:.45;cursor:default}
+#xferMsg:empty{display:none}
+#xferMsg.err{color:var(--err)}
+.vh{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden}
 .sd-empty{color:var(--muted);margin:8px 0}
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .kpi{background:var(--bg);border-radius:10px;padding:10px 6px;text-align:center}
@@ -285,7 +292,17 @@ dialog.stats-dlg{width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32
   </div>
   <div class="sd-body">
     <div id="statsBody"></div>
-    <p class="sd-note">Статистика хранится только в этом браузере и никуда не отправляется. Если очистить данные сайта или открыть игру в другом браузере, она начнётся заново.</p>
+    <section class="xfer" aria-labelledby="xferTitle">
+      <h3 id="xferTitle">Перенос на другое устройство</h3>
+      <p class="legend">Сохраните статистику в файл, перешлите его себе и загрузите в игре на новом телефоне или в другом браузере. Партии с обоих устройств объединятся, повторы не задвоятся.</p>
+      <div class="xfer-btns">
+        <button type="button" class="btn secondary" id="exportBtn">Сохранить в файл</button>
+        <button type="button" class="btn secondary" id="importBtn">Загрузить из файла</button>
+      </div>
+      <input type="file" id="importFile" class="vh" accept=".json,application/json" tabindex="-1" aria-hidden="true">
+      <p class="sd-note" id="xferMsg" role="status"></p>
+    </section>
+    <p class="sd-note">Статистика хранится только в этом браузере и никуда не отправляется. Если очистить данные сайта, она пропадёт — сохраните файл заранее.</p>
     <button type="button" class="giveup" id="statsReset">Сбросить статистику</button>
   </div>
 </dialog>
@@ -722,7 +739,7 @@ dialog.stats-dlg{width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32
   const LOG_MAX = 2000;
   function getLog() {
     const l = store.get("log", []);
-    return Array.isArray(l) ? l.filter(e => e && typeof e.a === "string" && Array.isArray(e.g) && "wlg".includes(e.r) && "dph".includes(e.m)) : [];
+    return Array.isArray(l) ? l.filter(e => e && typeof e.a === "string" && Array.isArray(e.g) && ["w", "l", "g"].includes(e.r) && ["d", "p", "h"].includes(e.m)) : [];
   }
   function logGame() {
     let t = 0, b = allowed.length + 1, cs = 0, cn = 0, dn = 0, up = 0;
@@ -796,8 +813,9 @@ dialog.stats-dlg{width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32
     const legacyWon = Math.min(legacy, Math.max(0, (st.won || 0) - dLog.filter(e => e.r === "w").length));
     const n = log.length, wins = log.filter(e => e.r === "w"), att = wins.map(e => e.g.length);
     $("statsReset").style.display = all.length || st.played ? "" : "none";
+    $("exportBtn").disabled = !(all.length || st.played);
     if (!n && !legacy) {
-      body.innerHTML = '<p class="sd-empty">' + (all.length || st.played ? "В этом режиме партий пока нет." : "Пока нет сыгранных партий. Сыграйте слово дня или тренировку — и здесь появятся цифры.") + "</p>";
+      body.innerHTML = '<p class="sd-empty">' + (all.length || st.played ? "В этом режиме партий пока нет." : "Пока нет сыгранных партий. Сыграйте слово дня или тренировку — и здесь появятся цифры. Если играли на другом устройстве, загрузите оттуда файл статистики — кнопка ниже.") + "</p>";
       return;
     }
 
@@ -920,7 +938,7 @@ dialog.stats-dlg{width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32
 
     body.innerHTML = h.join("");
   }
-  function openStats() { statFilter = "all"; resetArmed = 0; $("statsReset").textContent = "Сбросить статистику"; renderStats(); $("statsDlg").showModal(); $("statsDlg").scrollTop = 0; }
+  function openStats() { statFilter = "all"; resetArmed = 0; xfer(""); $("statsReset").textContent = "Сбросить статистику"; renderStats(); $("statsDlg").showModal(); $("statsDlg").scrollTop = 0; }
   $("statsBtn").addEventListener("click", openStats);
   $("statsBtn2").addEventListener("click", openStats);
   $("statsClose").addEventListener("click", () => $("statsDlg").close());
@@ -938,6 +956,109 @@ dialog.stats-dlg{width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32
     if (Date.now() - resetArmed > 5000) { resetArmed = Date.now(); $("statsReset").textContent = "Точно сбросить? Нажмите ещё раз"; return; }
     store.set("log", []); store.set("stats", { played: 0, won: 0, streak: 0, best: 0, lastDay: 0 });
     resetArmed = 0; $("statsReset").textContent = "Статистика сброшена"; renderStats(); if (S) renderResult();
+  });
+
+  // ---------- перенос статистики между устройствами ----------
+  // Файл: { app: "mezhdu", v: 1, exported, log, stats, day }. При загрузке партии из файла и с этого
+  // устройства объединяются (одинаковые не дублируются), поэтому загружать можно и на устройство,
+  // где уже есть свои партии, и один и тот же файл несколько раз.
+  const W5 = /^[а-я]{5}$/;
+  const num = x => (typeof x === "number" && isFinite(x) && x >= 0 ? x : 0);
+  function cleanEntry(e) {
+    if (!e || typeof e !== "object" || !["d", "p", "h"].includes(e.m) || !["w", "l", "g"].includes(e.r) || !W5.test(e.a) || !Array.isArray(e.g)) return null;
+    const g = e.g.filter(w => typeof w === "string" && W5.test(w)).slice(0, MAX);
+    if (!g.length || !num(e.t)) return null;
+    return { m: e.m, id: e.m === "d" ? Math.round(num(e.id)) : 0, a: e.a, g, r: e.r, t: num(e.t), s: Math.round(num(e.s)),
+      eb: Math.round(num(e.eb)), er: Math.round(num(e.er)), cs: num(e.cs), cn: Math.round(num(e.cn)), dn: Math.round(num(e.dn)), up: Math.round(num(e.up)) };
+  }
+  function cleanStats(st) {
+    const z = { played: 0, won: 0, streak: 0, best: 0, lastDay: 0 };
+    if (!st || typeof st !== "object") return z;
+    Object.keys(z).forEach(k => (z[k] = Math.round(num(st[k]))));
+    return z;
+  }
+  function cleanDay(d) {
+    if (!d || typeof d !== "object" || !Array.isArray(d.guesses)) return null;
+    const m = d.meta || {};
+    return { id: Math.round(num(d.id)), guesses: d.guesses.filter(w => typeof w === "string" && W5.test(w)).slice(0, MAX),
+      counted: !!d.counted, logged: !!d.logged, meta: { a: num(m.a), l: num(m.l), eb: Math.round(num(m.eb)), er: Math.round(num(m.er)) } };
+  }
+  const entryKey = e => (e.m === "d" ? "d" + e.id : e.m + e.t + e.a);   // слово дня — одна партия на день
+  function mergeLogs(a, b) {
+    const out = [], seen = new Set();
+    [...a, ...b].sort((x, y) => x.t - y.t).forEach(e => { const k = entryKey(e); if (!seen.has(k)) { seen.add(k); out.push(e); } });
+    return out.slice(-LOG_MAX);
+  }
+  // Серии слова дня по журналу — по тем же правилам, что recordStats()
+  function dailyRuns(log) {
+    const days = new Map(); log.filter(e => e.m === "d").forEach(e => days.set(e.id, e.r === "w"));
+    let cur = 0, best = 0, prev = -1;
+    [...days.keys()].sort((x, y) => x - y).forEach(id => { cur = days.get(id) ? (prev === id - 1 ? cur + 1 : 1) : 0; best = Math.max(best, cur); prev = id; });
+    return { cur, best, lastDay: prev > 0 ? prev : 0 };
+  }
+  function mergeStats(A, B, logA, logB, merged) {
+    const dc = (l, won) => l.filter(e => e.m === "d" && (!won || e.r === "w")).length;
+    // партии, сыгранные до появления журнала, есть только в счётчиках; на новом устройстве их нет,
+    // поэтому берём максимум, а не сумму — так повторная загрузка ничего не удваивает
+    const legP = Math.max(A.played - dc(logA), B.played - dc(logB), 0), legW = Math.max(A.won - dc(logA, 1), B.won - dc(logB, 1), 0);
+    const runs = dailyRuns(merged), lastDay = Math.max(A.lastDay, B.lastDay, runs.lastDay);
+    const streak = Math.max(A.lastDay === lastDay ? A.streak : 0, B.lastDay === lastDay ? B.streak : 0, runs.lastDay === lastDay ? runs.cur : 0);
+    return { played: dc(merged) + legP, won: dc(merged, 1) + legW, streak, best: Math.max(A.best, B.best, runs.best, streak), lastDay };
+  }
+  // Сегодняшнее слово дня: берём ту партию, что продвинулась дальше (законченная важнее начатой)
+  function pickDay(local, imp) {
+    const today = dayNumber(), ok = d => d && d.id === today;
+    if (!ok(imp)) return local;
+    if (!ok(local)) return imp;
+    const lead = (imp.counted - local.counted) || (imp.guesses.length - local.guesses.length);
+    return lead > 0 ? imp : local;
+  }
+
+  function xfer(msg, isErr) { const m = $("xferMsg"); m.textContent = msg; m.classList.toggle("err", !!isErr); }
+  function saveFile(blob, name) {
+    const url = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    xfer("Файл «" + name + "» сохранён. Откройте игру на другом устройстве и нажмите там «Загрузить из файла».");
+  }
+  function exportData() {
+    const data = { app: "mezhdu", v: 1, exported: new Date().toISOString(), log: getLog(), stats: store.get("stats", null), day: store.get("day", null) };
+    const name = "mezhdu-statistika-" + new Date().toISOString().slice(0, 10) + ".json";
+    const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+    // на телефоне удобнее системное меню «Поделиться»: сразу отправить файл себе в мессенджер или сохранить в «Файлы»
+    let file = null; try { file = new File([blob], name, { type: "application/json" }); } catch {}
+    if (file && navigator.canShare && matchMedia("(pointer: coarse)").matches && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: "Статистика «Между»" })
+        .then(() => xfer("Готово. Откройте игру на другом устройстве и нажмите там «Загрузить из файла»."))
+        .catch(err => { if (!err || err.name !== "AbortError") saveFile(blob, name); });
+      return;
+    }
+    saveFile(blob, name);
+  }
+  function importData(text) {
+    let d = null; try { d = JSON.parse(text); } catch {}
+    if (!d || d.app !== "mezhdu" || !Array.isArray(d.log)) return xfer("Это не файл статистики «Между». Нужен файл, сохранённый кнопкой «Сохранить в файл».", true);
+    const imp = d.log.map(cleanEntry).filter(Boolean), cur = getLog(), had = new Set(cur.map(entryKey));
+    const merged = mergeLogs(cur, imp), added = merged.filter(e => !had.has(entryKey(e))).length;
+    store.set("stats", mergeStats(cleanStats(store.get("stats", null)), cleanStats(d.stats), cur, imp, merged));
+    store.set("log", merged);
+    const localDay = store.get("day", null), day = pickDay(localDay, cleanDay(d.day));
+    if (day !== localDay) { store.set("day", day); if (mode === "daily") startDaily(); }
+    if (S) renderResult();
+    renderStats();
+    xfer(added ? "Готово: добавлено " + games(added) + "." : "Новых партий в файле нет — все они уже здесь.");
+  }
+  $("exportBtn").addEventListener("click", exportData);
+  $("importBtn").addEventListener("click", () => $("importFile").click());
+  $("importFile").addEventListener("change", e => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    if (f.size > 5e6) return xfer("Файл слишком большой — это не статистика «Между».", true);
+    const r = new FileReader();
+    r.onload = () => importData(String(r.result));
+    r.onerror = () => xfer("Не удалось прочитать файл.", true);
+    r.readAsText(f);
   });
 
   $("shareBtn").addEventListener("click", async () => {
